@@ -730,6 +730,8 @@ THREE.VRController.update = function(){
 	// (Perhaps in addition to actual VR rigs you’re also supporting
 	//  iOS devices via magic window?) If it doesn’t exist let’s bail:
 
+
+
 	if( navigator.getGamepads === undefined ) return
 
 
@@ -741,6 +743,9 @@ THREE.VRController.update = function(){
 	//  Also... those connection events are not widely supported yet anyhow.
 
 	gamepads = navigator.getGamepads()
+
+
+
 
 
 	//  For some reason the early examples of using the Gamepad API iterate over
@@ -763,6 +768,8 @@ THREE.VRController.update = function(){
 		//  me extra paranoid. Best to verify the pose object is really there.
 
 		gamepad = gamepads[ i ]
+
+
 		if( gamepad      !== undefined &&//  Just for you, Microsoft Edge!
 			gamepad      !== null &&     //  Meanwhile Chrome and Firefox do it this way.
 			gamepad.pose !== undefined &&
@@ -849,6 +856,25 @@ THREE.VRController.supported = {
 		primary: 'thumbpad'
 	},
 
+	'Gear VR Controller': {
+
+		style: 'gearvr',
+
+
+		//  THUMBPAD
+		//  Both a 2D trackpad and a button with both touch and press. 
+		//  The Y-axis is “Regular”.
+		//
+		//              Top: Y = -1
+		//                   ↑
+		//    Left: X = -1 ←─┼─→ Right: X = +1
+		//                   ↓
+		//           Bottom: Y = +1
+		
+		axes: [{ name: 'thumbpad', indexes: [ 0, 1 ]}],
+		buttons: [ 'thumbpad' ],
+		primary: 'thumbpad'
+	},
 
 
 
