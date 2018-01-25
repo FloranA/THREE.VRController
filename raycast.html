@@ -99,6 +99,8 @@ var material = new THREE.MeshBasicMaterial();
  uiObject = new THREE.Mesh(geometry, material);
 uiObject.position.z = -5
 
+var gamepadHelper,laserLine;
+
 var INTERSECTED = null;
 
 var raycaster = new THREE.Raycaster();
@@ -225,10 +227,13 @@ window.addEventListener( 'vr controller connected', function( event ){
 	controller.userData.mesh = controllerMesh//  So we can change the color later.
 	controller.add( controllerMesh )
 
-	var gamepadHelper = new THREE.Line( new THREE.BufferGeometry(), new THREE.LineBasicMaterial( { linewidth: 4 } ) );
-	gamepadHelper.geometry.addAttribute( 'position', new THREE.Float32BufferAttribute( [ 0, 0, 0, 0, 0, - 10 ], 3 ) );
+	//controllerMesh.rotateX(Math.PI / 4);
+	//controllerMesh.translateY(0.06);
 
-	controller.add(gamepadHelper);
+	laserLine = new THREE.Line( new THREE.BufferGeometry(), new THREE.LineBasicMaterial( { linewidth: 4 } ) );
+	laserLine.geometry.addAttribute( 'position', new THREE.Float32BufferAttribute( [ 0, 0, 0, 0, 0, - 10 ], 3 ) );
+
+	controller.add(laserLine);
 
 	castShadows( controller )
 	receiveShadows( controller )
@@ -302,6 +307,17 @@ function update(){
 						//if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
 
 						INTERSECTED = intersects[ 0 ].object;
+
+						console.log(intersects[ 0 ]);
+
+						if (laserLine) {
+
+						var positionArray = laserLine.geometry.attributes.position.array;
+
+						positionArray[5] = intersects[ 0 ].point.z;
+
+						laserLine.geometry.attributes.position.needsUpdate = true;
+						}
 
 						console.log("INTERSECTED ", INTERSECTED);
 						INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
