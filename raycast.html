@@ -31,8 +31,8 @@
 
 		</style>
 		
-		<script src="https://cdn.rawgit.com/mrdoob/three.js/r87/build/three.js"></script>
-		<script src="https://cdn.rawgit.com/mrdoob/three.js/r87/examples/js/vr/WebVR.js"></script>
+		<script src="three.js"></script>
+		<script src="WebVR.js"></script>
 		
 		<script src="VRController.js"></script>
 	</head>
@@ -54,11 +54,11 @@
 //  Does this browser support the WebVR API?
 //  Here’s how to download and configure one that does:
 //  https://webvr.rocks
-
+/*
 WEBVR.checkAvailability().catch( function( message ){
 
 	document.body.appendChild( WEBVR.getMessageContainer( message ))
-})
+})*/
 
 
 //  Regardless, let’s kick off the Three.js basics here:
@@ -78,6 +78,8 @@ renderer.vr.standing = true
 renderer.shadowMap.enabled = true
 renderer.shadowMap.type = THREE.PCFSoftShadowMap
 document.body.appendChild( renderer.domElement )
+document.body.appendChild( WEBVR.createButton( renderer ) );
+
 
 
 //  Once we create the camera we’ll attach it to the scene. This is usually
@@ -92,6 +94,12 @@ scene.add( camera )
 
 
 var controller = new THREE.Object3D();
+/*controller.position.set( 10000, -10000, 0 );
+controller.quaternion = new THREE.Quaternion();
+
+controller.matrix.compose(controller.position, controller.quaternion, controller.scale );
+
+controller.matrixWorldNeedsUpdate = true;*/
 
 
   var geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
@@ -99,24 +107,30 @@ var material = new THREE.MeshBasicMaterial();
  uiObject = new THREE.Mesh(geometry, material);
 uiObject.position.z = -5
 
+uiObject.visible = false;
+
 var gamepadHelper,laserLine;
 
 var INTERSECTED = null;
 
+
+var intersectedObjects = [], intersected = [];
+var tempMatrix = new THREE.Matrix4();
+
 var raycaster = new THREE.Raycaster();
 
-var intersectsObjects = [uiObject];
+var intersectedObjects = [uiObject];
 
 scene.add( uiObject );
 
 //  This button is important. It toggles between normal in-browser view
 //  and the brand new WebVR in-your-goggles view!
-
+/*
 WEBVR.getVRDisplay( function( display ){
 
 	renderer.vr.setDevice( display )
 	document.body.appendChild( WEBVR.getButton( display, renderer.domElement ))
-})
+})*/
 
 
 //  Should things change in the future we’ve got you covered:
@@ -182,6 +196,12 @@ window.addEventListener( 'vr controller connected', function( event ){
 	scene.add( controller )
 
 
+	console.log("TEST");
+
+
+	//controller.position.set( 0.25, - 0.5, 0 );
+
+
 	//  HEY HEY HEY! This is important. You need to make sure you do this.
 	//  For standing experiences (not seated) we need to set the standingMatrix
 	//  otherwise you’ll wonder why your controller appears on the floor
@@ -227,11 +247,14 @@ window.addEventListener( 'vr controller connected', function( event ){
 	controller.userData.mesh = controllerMesh//  So we can change the color later.
 	controller.add( controllerMesh )
 
-	//controllerMesh.rotateX(Math.PI / 4);
-	//controllerMesh.translateY(0.06);
 
-	laserLine = new THREE.Line( new THREE.BufferGeometry(), new THREE.LineBasicMaterial( { linewidth: 4 } ) );
+
+	laserLine = new THREE.Line( new THREE.BufferGeometry(), new THREE.LineBasicMaterial( { linewidth: 1 } ) );
 	laserLine.geometry.addAttribute( 'position', new THREE.Float32BufferAttribute( [ 0, 0, 0, 0, 0, - 10 ], 3 ) );
+
+	laserLine.name = 'line';
+	laserLine.visible = false;
+	//line.scale.z = 5;
 
 	controller.add(laserLine);
 
@@ -251,22 +274,54 @@ window.addEventListener( 'vr controller connected', function( event ){
 
 	controller.addEventListener( 'primary press began', function( event ) {
 
-		console.log("PRESSED", event.target);
+		//var intersections = getIntersections( controller );
+
+				//if ( intersections.length > 0 ) {
+			if ( controller.userData.selected !== undefined ) {
+
+					//var intersection = intersections[ 0 ];
+					//var object = intersection.object;
+					var object = controller.userData.selected;
+
+					//object.material.emissive.b = 1;
+
+					object.material.color.setHex( 0xff0000);
+
+					//controller.userData.selected = object;
+			} else {
+
+				if (uiObject.visible) {
+					uiObject.visible = false;
+					laserLine.visible = false;
+				}
+				else {
+					uiObject.visible = true;
+					laserLine.visible = true;
+				}
+
+				console.log("SHOW MENU");
+			}
 
 
-		if (INTERSECTED) INTERSECTED.material.color.setHex( 0xff0000  );
 
+		console.log("PRESSED");
 
+	
 
-		//event.target.userData.mesh.material.color.setHex( meshColorOn )
-		//guiInputHelper.pressed( true )
 	})
 	controller.addEventListener( 'primary press ended', function( event ){
 
-		if (INTERSECTED) INTERSECTED.material.color.setHex( INTERSECTED.currentHex  );
+		if ( controller.userData.selected !== undefined ) {
 
-		//event.target.userData.mesh.material.color.setHex( meshColorOff )
-		//guiInputHelper.pressed( false )
+					var object = controller.userData.selected;
+					//object.material.emissive.b = 0;
+
+					object.material.color.setHex( controller.userData.currentHex);
+			
+					controller.userData.selected = undefined;
+
+				}
+
 	})
 
 
@@ -280,10 +335,93 @@ window.addEventListener( 'vr controller connected', function( event ){
 
 
 
+			function getIntersections( controller ) {
+
+				
+
+				tempMatrix.identity().extractRotation( controller.matrixWorld );
+
+				raycaster.ray.origin.setFromMatrixPosition( controller.matrixWorld );
+				raycaster.ray.direction.set( 0, 0, -1 ).applyMatrix4( tempMatrix );
+
+				return raycaster.intersectObjects( intersectedObjects );
+
+			}
+
+			function intersectObjects( controller ) {
+
+				// Do not highlight when already selected
+
+				if ( controller.userData.selected !== undefined ) {
+//controller.userData.selected.material.color.setHex( controller.userData.currentHex );
+
+					//return;
+				}
+
+				
+				var intersections = getIntersections( controller );
+
+				if ( intersections.length > 0 ) {
+
+					if (controller.userData.selected  != intersections[ 0 ].object) {
+
+						var intersection = intersections[ 0 ];
+						var object = intersection.object;
+
+						console.log("OBJECT");
+						console.log(object);
+
+						controller.userData.currentHex = object.material.color.getHex();
+						//object.material.emissive.r = 1;
+
+						object.material.color.setHex( 0x999999);
+
+						//INTERSECTED = object;
+
+						controller.userData.selected = object;
+						//intersected.push( object );
+
+						var line = controller.getObjectByName( 'line' );
+
+						if (line) {
+							var positionArray = line.geometry.attributes.position.array;
+
+							positionArray[5] = intersection.point.z;
+
+							line.geometry.attributes.position.needsUpdate = true;
+							
+						}
+					}
+
+				} else {
+
+					if ( controller.userData.selected  ) {
+						controller.userData.selected.material.color.setHex( controller.userData.currentHex );
+
+						controller.userData.selected = undefined;
+
+						var line = controller.getObjectByName( 'line' );
+
+						if (line) {
+							var positionArray = line.geometry.attributes.position.array;
+
+							positionArray[5] = -10;
+
+							line.geometry.attributes.position.needsUpdate = true;
+							
+						}
+					}
+
+					
+
+				}
+
+			}
+
+
+
 
 function update(){
-
-
 	//  Here’s VRController’s UPDATE goods right here:
 	//  This one command in your animation loop is going to handle
 	//  all the VR controller business you need to get done!
@@ -291,55 +429,7 @@ function update(){
 	THREE.VRController.update()
 
 
-	raycaster.ray.origin.copy( controller.position );
-	raycaster.ray.direction.set( 0, 0, - 1 ).applyQuaternion( controller.quaternion );
-
-	
-
-	var intersects = raycaster.intersectObjects( intersectsObjects  );
-
-				if ( intersects.length > 0 ) {
-
-					if ( INTERSECTED != intersects[ 0 ].object ) {
-
-
-						 if ( INTERSECTED ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
-						//if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
-
-						INTERSECTED = intersects[ 0 ].object;
-
-						console.log(intersects[ 0 ]);
-
-						if (laserLine) {
-
-						var positionArray = laserLine.geometry.attributes.position.array;
-
-						positionArray[5] = intersects[ 0 ].point.z;
-
-						laserLine.geometry.attributes.position.needsUpdate = true;
-						}
-
-						console.log("INTERSECTED ", INTERSECTED);
-						INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-
-						//INTERSECTED.material.color.setHex( 0xff0000  );
-						//INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
-						//INTERSECTED.material.emissive.setHex( 0xff0000 );
-
-					}
-
-				} else {
-
-					 if ( INTERSECTED && INTERSECTED.currentHex ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
-
-					//if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
-
-					INTERSECTED = undefined;
-
-				}
-
-
-
+	intersectObjects( controller );
 
 	//  And here’s your standard update and render stuff.
 	//  Nothing new to see here.
