@@ -43,6 +43,8 @@
         <script>
             var camera, scene, renderer, controls
 
+ //THREE.VRController.verbosity = 1;
+
 
 //  We need a renderer.
 
@@ -55,6 +57,41 @@ renderer.shadowMap.enabled = true
 renderer.shadowMap.type = THREE.PCFSoftShadowMap
 document.body.appendChild( renderer.domElement )
 document.body.appendChild( WEBVR.createButton( renderer ) );
+
+
+
+			window.addEventListener( 'vrdisplaypresentchange', function ( event ) {
+
+				console.log("presenting");
+				console.log(event.display.isPresenting);
+
+				if (!event.display.isPresenting) {
+					THREE.VRController.onGamepadDisconnectAll();
+				}
+
+			}, false );
+
+			window.addEventListener( 'vrdisplayactivate', function ( event ) {
+
+				console.log("display activated");
+
+			}, false );
+
+			window.addEventListener( 'vrdisplayactivate', function ( event ) {
+
+				console.log("display activated");
+
+			}, false );
+
+			window.addEventListener( 'vrdisplaydeactivate', function ( event ) {
+
+				console.log("display deactivated");
+
+			}, false );
+
+
+			
+
 
 
  
@@ -229,10 +266,44 @@ scene.add( uiObject );
 		}
 
 		function createMarker() {
-			const geometry = new THREE.CircleBufferGeometry( 1, 32 ),
-		    material = new THREE.MeshBasicMaterial({
-		    	color: 0xffffff
-		    });
+			const geometry = new THREE.CircleBufferGeometry( 1, 32 );
+		    //material = new THREE.MeshBasicMaterial({
+		   // 	color: 0xffffff
+		    //});
+
+		    const material = new THREE.RawShaderMaterial( {
+		        uniforms: {
+		                color: {
+		                    type: 'c',
+		                    value: new THREE.Color(0xffffff)
+		                },
+		                limitDistance:{
+		      				value: 2.0
+		    			}
+		          },
+		          transparent: false,
+		          vertexShader: `
+		            attribute vec2 uv;
+		            attribute vec4 position;
+		            varying vec4 vPos;
+		            uniform mat4 projectionMatrix;
+		            uniform mat4 modelViewMatrix;
+		            void main() {
+		              vPos = position;
+		              gl_Position = projectionMatrix * modelViewMatrix * position;
+		            }
+		        `,
+		          fragmentShader:  `
+			            precision highp float;
+			            precision highp int;
+			            uniform vec3 color;
+			            uniform float opacity;
+			            void main() {
+			              gl_FragColor = vec4(color, opacity);
+			            }
+			        `
+		         
+		      });
 
 		    laserMarker = new THREE.Mesh(geometry, material);
 		    laserMarker.name = "marker";
@@ -256,6 +327,7 @@ scene.add( uiObject );
 		      				value: 2.0
 		    			}
 		          },
+		          linewidth: 4,
 		          transparent: true,
 		          vertexShader: `
 		            attribute vec2 uv;
@@ -399,15 +471,18 @@ function update(){
 	//  This one command in your animation loop is going to handle
 	//  all the VR controller business you need to get done!
 
-	THREE.VRController.update()
+	THREE.VRController.update();
+
+
 
 
 	intersectObjects( controller );
 
 	//  And here’s your standard update and render stuff.
 	//  Nothing new to see here.
-
+	try {
 	renderer.render( scene, camera )
+} catch(e) {}
 }
 renderer.animate( update )
         </script>

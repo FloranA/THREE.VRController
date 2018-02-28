@@ -87,17 +87,6 @@ THREE.VRController = function( gamepad ){
 		quaternion: new THREE.Quaternion()
 	}
 
-
-	//  It is crucial that we have a reference to the actual gamepad.
-	//  In addition to requiring its .pose for position and orientation
-	//  updates, it also gives us all the goodies like .id, .index,
-	//  and maybe best of all... haptics!
-
-	this.gamepad = gamepad
-	this.name    = gamepad.id
-	this.dof     = gamepad.pose ? 3 * ( +gamepad.pose.hasOrientation + +gamepad.pose.hasPosition ) : 0
-
-
 	//  If the gamepad has a hapticActuators Array with something valid in
 	//  the first slot then we can send it an intensity (from 0 to 1) and a 
 	//  duration in milliseconds like so:
@@ -119,87 +108,121 @@ THREE.VRController = function( gamepad ){
 	this.vibeChannels.prior = 0
 
 
-	//  Setup states so we can watch for change events.
-	//  This includes handedness, axes, and buttons.
+	this.configureGampad = function(gamepad) {
+			//  It is crucial that we have a reference to the actual gamepad.
+			//  In addition to requiring its .pose for position and orientation
+			//  updates, it also gives us all the goodies like .id, .index,
+			//  and maybe best of all... haptics!
 
-	handedness = gamepad.hand
+			this.gamepad = gamepad
+			this.name    = gamepad.id
+			this.dof     = gamepad.pose ? 3 * ( +gamepad.pose.hasOrientation + +gamepad.pose.hasPosition ) : 0;
+
+			//  Setup states so we can watch for change events.
+			//  This includes handedness, axes, and buttons.
+
+			handedness = gamepad.hand;
+
+			console.log(this.gamepad);
+	};
 
 
-	//  Note that the plural of axis is axes -- and that is not only a source
-	//  of confusion for non-native English speakers, it trips me up too.
-	//  First, let’s copy the Gamepad’s axes values into our own array.
+	this.updateGamepad = function(gamepad) {
 
-	axes.byName = {}
-	gamepad.axes.forEach( function( axis, i ){
+		this.configureGampad(gamepad);
 
-		axes[ i ] = axis
-	})
+		axes.length = 0;
+		buttons.length = 0;
+
+		//  Note that the plural of axis is axes -- and that is not only a source
+		//  of confusion for non-native English speakers, it trips me up too.
+		//  First, let’s copy the Gamepad’s axes values into our own array.
+
+		axes.byName = {}
+		gamepad.axes.forEach( function( axis, i ){
+
+			axes[ i ] = axis
+		});
+
+		//  Similarly we’ll create a default set of button objects.
+
+		buttons.byName = {}
+		gamepad.buttons.forEach( function( button, i ){
+
+			buttons[ i ] = {
+
+				name:     'button_'+ i,
+				value:     button.value,
+				isTouched: button.touched,
+				isPressed: button.pressed,
+				isPrimary: false
+			}
+		});
+
+		
+			if( this.supported.axes !== undefined ) {
+
+				this.supported.axes.forEach( function( axesMap ) {
+
+					axes.byName[ axesMap.name ] = axesMap.indexes
+				})
+			}
+			if( this.supported.buttons !== undefined ){
+
+				this.supported.buttons.forEach( function( buttonName, i ){
+
+					buttons[ i ].name = buttonName
+				})
+			}
+			buttonNamePrimary = supported.primary;
 
 
-	//  Similarly we’ll create a default set of button objects.
+		//  This will allow you to listen for 'primary press began', etc.
+		//  even if we don’t explicitly support this controller model.
+		//  Right now convention seems to be that button #0 will be a thumbpad
+		// (Vive, Oculus, Daydream, GearVR) or thumbstick (Microsoft).
+		//  If there is a trigger then that sits in slot #1 (Vive, Oculus,
+		//  Micrsoft) and becomes the primary button. But if there is no trigger
+		//  then the thumbpad becomes the primary button (Daydream, GearVR).
 
-	buttons.byName = {}
-	gamepad.buttons.forEach( function( button, i ){
+		buttons.forEach( function( button ){
 
-		buttons[ i ] = {
+			buttons.byName[ button.name ] = button
+		})
+		if( buttonNamePrimary === undefined ) buttonNamePrimary = gamepad.buttons.length > 1 ? 'button_1' : 'button_0'
+		buttons.byName[ buttonNamePrimary ].isPrimary = true
 
-			name:     'button_'+ i,
-			value:     button.value,
-			isTouched: button.touched,
-			isPressed: button.pressed,
-			isPrimary: false
+	};
+
+
+	this.initGamepad = function(gamepad) {
+
+		//  Do we recognize this type of controller based on its gamepad.id?
+		//  If not we’ll still roll with it, we just won’t have axes and buttons
+		//  mapped to convenience strings. No biggie.
+		//  Because Microsoft’s controller appends unique ID numbers to the end of
+		//  its ID string we can no longer just do this:
+		//  supported = THREE.VRController.supported[ gamepad.id ]
+		//  Instead we must loop through some object keys first.
+		
+		key = Object.keys( THREE.VRController.supported ).find( function( id ){
+		
+			if( gamepad.id.startsWith( id )) return true
+		})
+
+		supported = THREE.VRController.supported[ key ];
+
+		if ( supported !== undefined ) {
+
+			this.supported = supported;
+			this.style = supported.style;
+
+			this.updateGamepad(gamepad);
 		}
-	})
 
+	};
 
-	//  Do we recognize this type of controller based on its gamepad.id?
-	//  If not we’ll still roll with it, we just won’t have axes and buttons
-	//  mapped to convenience strings. No biggie.
-	//  Because Microsoft’s controller appends unique ID numbers to the end of
-	//  its ID string we can no longer just do this:
-	//  supported = THREE.VRController.supported[ gamepad.id ]
-	//  Instead we must loop through some object keys first.
-	
-	key = Object.keys( THREE.VRController.supported ).find( function( id ){
-	
-		if( gamepad.id.startsWith( id )) return true
-	})
-	supported = THREE.VRController.supported[ key ]
-	if( supported !== undefined ){
-
-		this.style = supported.style
-		if( supported.axes !== undefined ){
-
-			supported.axes.forEach( function( axesMap ){
-
-				axes.byName[ axesMap.name ] = axesMap.indexes
-			})
-		}
-		if( supported.buttons !== undefined ){
-
-			supported.buttons.forEach( function( buttonName, i ){
-
-				buttons[ i ].name = buttonName
-			})
-		}
-		buttonNamePrimary = supported.primary
-	}
-
-
-	//  This will allow you to listen for 'primary press began', etc.
-	//  even if we don’t explicitly support this controller model.
-	//  Right now convention seems to be that button #0 will be a thumbpad
-	// (Vive, Oculus, Daydream, GearVR) or thumbstick (Microsoft).
-	//  If there is a trigger then that sits in slot #1 (Vive, Oculus,
-	//  Micrsoft) and becomes the primary button. But if there is no trigger
-	//  then the thumbpad becomes the primary button (Daydream, GearVR).
-
-	buttons.forEach( function( button ){
-
-		buttons.byName[ button.name ] = button
-	})
-	if( buttonNamePrimary === undefined ) buttonNamePrimary = gamepad.buttons.length > 1 ? 'button_1' : 'button_0'
-	buttons.byName[ buttonNamePrimary ].isPrimary = true
+	this.initGamepad(gamepad);
 
 
 	//  Let’s make some getters! 
@@ -444,7 +467,22 @@ THREE.VRController.prototype.update = function(){
 	if( pose.position !== null ){
 
 		this.position.fromArray( pose.position )
-		this.matrix.compose( this.position, this.quaternion, this.scale )
+		this.matrix.compose( this.position, this.quaternion, this.scale );
+
+		//  Ok, we know where the this ought to be so let’s set that.
+		//  For 6DOF controllers it’s necessary to set controller.standingMatrix
+		//  to reference your VRControls.standingMatrix, otherwise your controllers
+		//  will be on the floor instead of up in your hands!
+		//  NOTE: “VRControls” and “VRController” are similarly named but two
+		//  totally different things! VRControls is what reads your headset’s
+		//  position and orientation, then moves your camera appropriately.
+		//  Whereas this VRController instance is for the VR controllers that
+		//  you hold in your hands.
+
+		//matrix.premultiply( scope.standingMatrix );
+
+		this.matrix.multiplyMatrices( this.standingMatrix, this.matrix )
+		this.matrixWorldNeedsUpdate = true;
 	}
 
 
@@ -483,20 +521,7 @@ THREE.VRController.prototype.update = function(){
 		)
 	}
 
-
-	//  Ok, we know where the this ought to be so let’s set that.
-	//  For 6DOF controllers it’s necessary to set controller.standingMatrix
-	//  to reference your VRControls.standingMatrix, otherwise your controllers
-	//  will be on the floor instead of up in your hands!
-	//  NOTE: “VRControls” and “VRController” are similarly named but two
-	//  totally different things! VRControls is what reads your headset’s
-	//  position and orientation, then moves your camera appropriately.
-	//  Whereas this VRController instance is for the VR controllers that
-	//  you hold in your hands.
-
-	this.matrix.multiplyMatrices( this.standingMatrix, this.matrix )
-	this.matrixWorldNeedsUpdate = true
-
+	this.matrixWorldNeedsUpdate = true;
 
 	//  Poll for changes in handedness, axes, and button states.
 	//  If there’s a change this function fires the appropriate event.
@@ -714,6 +739,19 @@ THREE.VRController.onGamepadDisconnect = function( gamepad ){
 	scope.controllers[ gamepad.index ] = undefined
 }
 
+/**
+ * Disconnect all controllers 
+ * This is useful for when exiting presentation mode
+ */
+THREE.VRController.onGamepadDisconnectAll = function() {
+
+	var scope = THREE.VRController;
+
+	for( i = 0; i < scope.controllers.length; i ++ ){
+		THREE.VRController.onGamepadDisconnect(scope.controllers[i].gamepad);
+	}
+}
+
 
 //  This is what makes everything so convenient. We keep track of found
 //  controllers right here. And by adding this one update function into your
@@ -787,8 +825,18 @@ THREE.VRController.update = function(){
 
 			if( gamepad.pose.orientation !== null || gamepad.pose.position !== null ){
 
-				if( this.controllers[ i ] === undefined ) THREE.VRController.onGamepadConnect( gamepad )
-				this.controllers[ i ].update()
+				if( this.controllers[ i ] === undefined ) {
+					THREE.VRController.onGamepadConnect( gamepad );
+				}
+				else if (this.controllers[ i ].gamepad.timestamp !== gamepad.timestamp) {
+					//the gamepad changes in GearVR and Daydream when deactivating or exiting presentation.
+					//GearVR does not provide deactivate event when lifting off the headset.
+					//Disconnect the Gamepad and Controller for reconnection
+					THREE.VRController.onGamepadDisconnect( this.controllers[ i ].gamepad );
+					THREE.VRController.onGamepadConnect( gamepad );
+				}
+
+				this.controllers[ i ].update();
 			}
 
 
