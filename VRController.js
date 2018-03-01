@@ -122,8 +122,6 @@ THREE.VRController = function( gamepad ){
 			//  This includes handedness, axes, and buttons.
 
 			handedness = gamepad.hand;
-
-			console.log(this.gamepad);
 	};
 
 
@@ -747,7 +745,7 @@ THREE.VRController.onGamepadDisconnectAll = function() {
 
 	var scope = THREE.VRController;
 
-	for( i = 0; i < scope.controllers.length; i ++ ){
+	for( i = 0; i < scope.controllers.length; i ++ ) {
 		THREE.VRController.onGamepadDisconnect(scope.controllers[i].gamepad);
 	}
 }

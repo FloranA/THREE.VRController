@@ -1,0 +1,40 @@
+{
+  "name": "VRController",
+  "title": "VRController",
+  "description": "upport hand controllers for Oculus, Vive, Windows Mixed Reality, Daydream, GearVR, and more by adding VRController to your existing Three.js-based WebVR project. ",
+  "version": "1.0.0",
+  "homepage": "https://github.com/stewdio/THREE.VRController",
+  "license": "MIT",
+  "keywords": [
+    "vr",
+    "controller"
+  ],
+  "author": {
+    "name": "stewdio",
+    "email": ""
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stewdio/THREE.VRController.git"
+  },
+  "bugs": {
+    "url": "https://github.com/stewdio/THREE.VRController/issues"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "rollup": "^0.50.0",
+    "rollup-plugin-babel": "^3.0.2",
+    "rollup-plugin-commonjs": "^8.1.0",
+    "rollup-plugin-uglify": "^2.0.1",
+    "three": "^0.91.0",
+    "uglify-es": "github:mishoo/UglifyJS2#harmony"
+  },
+  "main": "VRController.js",
+  "engines": {
+    "node": ">=0.8.0"
+  },
+  "scripts": {
+    "build": "rollup -c",
+    "uglify": "uglifyjs VRController.js -c -m -o VRController.min.js"
+  }
+}
