@@ -190,6 +190,7 @@ THREE.VRController = function( gamepad ){
 		if( buttonNamePrimary === undefined ) buttonNamePrimary = gamepad.buttons.length > 1 ? 'button_1' : 'button_0'
 		buttons.byName[ buttonNamePrimary ].isPrimary = true
 
+
 	};
 
 
@@ -338,7 +339,7 @@ THREE.VRController = function( gamepad ){
 					if( gamepad.axes[ index ] !== axes[ index ]){
 
 						axesChanged = true
-						axes[ index ] = gamepad.axes[ index ]
+						axes[ index ] = controller.gamepad.axes[ index ]
 					}
 					axesValues.push( axes[ index ])
 				})
@@ -362,7 +363,7 @@ THREE.VRController = function( gamepad ){
 
 		else {
 
-			gamepad.axes.forEach( function( axis, i ){
+			controller.gamepad.axes.forEach( function( axis, i ){
 
 				if( axis !== axes[ i ]){
 
@@ -377,7 +378,6 @@ THREE.VRController = function( gamepad ){
 			}
 		}
 
-
 		//  Did any button states change?
 
 		buttons.forEach( function( button, i ){
@@ -387,15 +387,14 @@ THREE.VRController = function( gamepad ){
 			isPrimary = button.isPrimary,
 			eventAction
 
-
 			//  If this button is analog-style then its values will range from
 			//  0.0 to 1.0. But if it’s binary you’ll only received either a 0
 			//  or a 1. In that case 'value' usually corresponds to the press
 			//  state: 0 = not pressed, 1 = is pressed.
 
-			if( button.value !== gamepad.buttons[ i ].value ){
+			if( button.value !== controller.gamepad.buttons[ i ].value ){
 
-				button.value = gamepad.buttons[ i ].value
+				button.value = controller.gamepad.buttons[ i ].value
 				if( verbosity >= 0.6 ) console.log( controllerAndButtonInfo +'value changed', button.value )
 				controller.dispatchEvent({ type: button.name +' value changed', value: button.value })
 				if( isPrimary ) controller.dispatchEvent({ type: 'primary value changed', value: button.value })
@@ -408,22 +407,21 @@ THREE.VRController = function( gamepad ){
 			//  analog-style value property to make rules like: for 0.0 .. 0.1
 			//  touch = true, and for >0.1 press = true. 
 
-			if( button.isTouched !== gamepad.buttons[ i ].touched ){
+			if( button.isTouched !== controller.gamepad.buttons[ i ].touched ){
 
-				button.isTouched = gamepad.buttons[ i ].touched
+				button.isTouched = controller.gamepad.buttons[ i ].touched
 				eventAction = button.isTouched ? 'began' : 'ended'
 				if( verbosity >= 0.5 ) console.log( controllerAndButtonInfo +'touch '+ eventAction )
 				controller.dispatchEvent({ type: button.name +' touch '+ eventAction })
 				if( isPrimary ) controller.dispatchEvent({ type: 'primary touch '+ eventAction })
 			}
 
-
 			//  This is the least complicated button property.
 
-			if( button.isPressed !== gamepad.buttons[ i ].pressed ){
+			if( button.isPressed !== controller.gamepad.buttons[ i ].pressed ){
 
-				button.isPressed = gamepad.buttons[ i ].pressed
-				eventAction = button.isPressed ? 'began' : 'ended'
+				button.isPressed = controller.gamepad.buttons[ i ].pressed;
+				eventAction = button.isPressed ? 'began' : 'ended';
 				if( verbosity >= 0.5 ) console.log( controllerAndButtonInfo +'press '+ eventAction )
 				controller.dispatchEvent({ type: button.name +' press '+ eventAction })
 				if( isPrimary ) controller.dispatchEvent({ type: 'primary press '+ eventAction })
@@ -829,9 +827,8 @@ THREE.VRController.update = function(){
 				else if (this.controllers[ i ].gamepad.timestamp !== gamepad.timestamp) {
 					//the gamepad changes in GearVR and Daydream when deactivating or exiting presentation.
 					//GearVR does not provide deactivate event when lifting off the headset.
-					//Disconnect the Gamepad and Controller for reconnection
-					THREE.VRController.onGamepadDisconnect( this.controllers[ i ].gamepad );
-					THREE.VRController.onGamepadConnect( gamepad );
+					//reset to the new gamepad
+					this.controllers[ i ].updateGamepad(gamepad);
 				}
 
 				this.controllers[ i ].update();
